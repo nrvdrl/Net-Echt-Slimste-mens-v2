@@ -8,7 +8,7 @@ export const generatePuzzleData = async (
   const apiKey = process.env.API_KEY;
 
   if (!apiKey) {
-    throw new Error("Geen API Key gevonden. Controleer process.env.API_KEY.");
+    throw new Error("API Key not found in process.env.API_KEY");
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -21,10 +21,7 @@ export const generatePuzzleData = async (
     })
     .join("\n");
 
-  const systemInstruction = `Je bent de redacteur van de "Puzzelronde" van het programma "De Slimste Mens". 
-Je taak is om een puzzel te genereren in strikt JSON formaat.`;
-
-  const userPrompt = `
+  const prompt = `
     Maak een puzzelronde op basis van de volgende input.
     Thema: ${themeInput || "Kies een passend thema bij de begrippen"}
     
@@ -43,9 +40,9 @@ Je taak is om een puzzel te genereren in strikt JSON formaat.`;
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: userPrompt,
+      contents: prompt,
       config: {
-        systemInstruction: systemInstruction,
+        systemInstruction: "Je bent de redacteur van de 'Puzzelronde' van het programma 'De Slimste Mens'.",
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -62,29 +59,21 @@ Je taak is om een puzzel te genereren in strikt JSON formaat.`;
                     items: { type: Type.STRING }
                   }
                 },
-                required: ["term", "clues"],
+                required: ["term", "clues"]
               }
             }
           },
-          required: ["theme", "groups"],
+          required: ["theme", "groups"]
         }
       }
     });
 
-    const content = response.text;
-
-    if (!content) {
+    const text = response.text;
+    if (!text) {
       throw new Error("Geen antwoord ontvangen van de AI.");
     }
     
-    let puzzleData;
-    try {
-        puzzleData = JSON.parse(content);
-    } catch (e) {
-        // Fallback cleanup if the model wraps code in markdown backticks
-        const cleanJson = content.replace(/```json/g, '').replace(/```/g, '').trim();
-        puzzleData = JSON.parse(cleanJson);
-    }
+    const puzzleData = JSON.parse(text);
     
     // Transform API response to internal format with IDs
     return {
